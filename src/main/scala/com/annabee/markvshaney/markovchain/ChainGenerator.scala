@@ -4,39 +4,43 @@ import scala.util.Random
 
 sealed trait MarkovChain[A] {
 
-  def generate(input: A, windowSize: Int): A
-
+  def generate(input: A, windowSize: Int): List[A]
 }
 
 case object TextBasedMarkovChain extends MarkovChain[String] {
 
-
-  override def generate(input: String, windowSize: Int): String = {
+  override def generate(input: String, windowSize: Int): List[String] = {
     assert(windowSize > 0)
 
-    val (states, seeds, stats) = TextInputParser.generateStateTransitionsAndSeedsAndStats(input, windowSize)
+    val knowledgeStore = TextInputParser.parse(input, windowSize)
 
-    val paragraphStart = Random.shuffle(seeds).head
+    val paragraphStart = knowledgeStore.getStartState
+
+    knowledgeStore.getPossibleNextStateTransitions(paragraphStart)
+
+    // keep track of stats, while not exceeding avg sentence and paragraph length, keep generating new states
 
     // nextTransition
 
    ???
   }
 
-  // FIXME
-//    private def nextTransition(state: List[String], transitions: Map[String, List[String]]): List[String] =
-//      if (state.last.endsWith("."))  // FIXME: add all punctuation
-//        state
-//      else {
-//        // FIXME: 1) get rid of that mkString in states generation and make all this a list 2) checking if last ends with punctuation is not enough, check all elems of the next state.
-//        val nextState = transitions.get(state.last.split(" ").last) match {
-//          case None => " blooper"
-//          case Some(v) => Random.shuffle(v).head
-//        }
-//        val updatedState = state :+ nextState
-//        nextTransition(updatedState, transitions)
-//      }
+  // TODO: think about paragraph lengths
+  // or maybe I won't use it at all?
+  private[markovchain] def selectNextState(currentChain: List[String], possibleTransitions: List[String], stats: TextStats): String = {
+    if (currentChain.length < stats.avgSentenceLength) Random.shuffle(possibleTransitions).head
+    else {
+      val biasedStates = possibleTransitions.filter(endingSentence)
+      biasedStates.length match {
+        case 0 => Random.shuffle(possibleTransitions).head
+        case _ => Random.shuffle(biasedStates).head
+      }
+    }
+  }
 
+  private[markovchain] def endingSentence(word: String): Boolean = {
+    val punctuation = List(".", "?", "!", "...")
+    val l = for { p <- punctuation } yield word.endsWith(p)
+    l.exists(identity)
+  }
 }
-
-
