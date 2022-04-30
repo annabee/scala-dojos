@@ -1,12 +1,12 @@
 package com.annabee.markvshaney
 
-import com.annabee.markvshaney.markovchain.{TextBasedMarkovChain, TextDisplay, TextInputParser}
+import com.annabee.markvshaney.markovchain.{TextBasedMarkovChainGenerator, TextDisplay, TextInputParser}
 
 object MarkVShaneyApp extends App {
 
   val input = "bla"
 
-  val chain = TextBasedMarkovChain.generate(input, 2)
+  val chain = TextBasedMarkovChainGenerator.generate(input, 2)
   TextDisplay.show(chain)
 
   // step 1: process input - get possible steps

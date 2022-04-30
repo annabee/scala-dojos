@@ -12,7 +12,7 @@ case object TextInputParser extends InputParser[String] {
     val seeds = getWordsStartingParagraphs(paragraphs)
     val (states, sentenceStats) = parseSentences(paragraphs, windowSize)
 
-    TextBasedKnowledgeStore(states, seeds, TextStats(paragraphStats, sentenceStats))
+    TextBasedKnowledgeStore(states, seeds, paragraphStats, sentenceStats)
   }
 
   // returns a list of all paragraphs in text with the avg number of sentences in a paragraph
