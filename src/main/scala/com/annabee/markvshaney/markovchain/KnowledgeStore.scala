@@ -4,18 +4,19 @@ import scala.util.Random
 
 sealed trait KnowledgeStore[A] {
 
-  def getStartState: A
+  def getStartState: List[A]
 
-  def getPossibleStateTransitions(currentState: A): List[A]
+  def getPossibleStateTransitions(currentState: List[A]): List[A]
 }
 
-case class TextBasedKnowledgeStore(stateTransitions: Map[String, List[String]],
-                                   startStates: List[String],
-                                   avgSentenceLength: Double,
-                                   avgParagraphLength: Double) extends KnowledgeStore[String] {
+case class SongLyricsKnowledgeStore(stateTransitions: Map[List[String], List[String]],
+                                    startStates: List[List[String]],
+                                    //maxVerseLength: Int
+                                    //maxNumberOfVerses: Int
+                                  ) extends KnowledgeStore[String] {
 
-  override def getStartState: String = Random.shuffle(startStates).head
+  override def getStartState: List[String] = Random.shuffle(startStates).head
 
-  override def getPossibleStateTransitions(currentState: String): List[String] =
+  override def getPossibleStateTransitions(currentState: List[String]): List[String] =
     stateTransitions.getOrElse(currentState, List.empty)
 }

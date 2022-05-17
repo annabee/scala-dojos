@@ -5,36 +5,57 @@ sealed trait InputParser[A] {
   def parse(input: A, windowSize: Int): KnowledgeStore[A]
 }
 
-case object TextInputParser extends InputParser[String] {
+case object SongLyricsParser extends InputParser[String] {
 
-  override def parse(input: String, windowSize: Int): TextBasedKnowledgeStore = {
-    val (paragraphs, paragraphStats) = parseParagraphs(input)
-    val seeds = getWordsStartingParagraphs(paragraphs)
-    val (states, sentenceStats) = parseSentences(paragraphs, windowSize)
+  override def parse(input: String, windowSize: Int): SongLyricsKnowledgeStore = {
 
-    TextBasedKnowledgeStore(states, seeds, paragraphStats, sentenceStats)
+    val (transitions, startTokens) = getStateTransitionsAndStartSeeds(input, windowSize)
+    // FIXME: this would be better if it could generate verses
+    // val maxVerseLength = getMaxVerseLength(input.split("\n").toList)
+
+    SongLyricsKnowledgeStore(
+      transitions,
+      startTokens
+    )
   }
 
-  // returns a list of all paragraphs in text with the avg number of sentences in a paragraph
-  private def parseParagraphs(input: String): (List[String], Double) = ???
+  // returns transitions from one word to the next group of words (determined by window size), alongside a lst of possible sentence starting words
+  private[markovchain] def getStateTransitionsAndStartSeeds(inputText: String, windowSize: Int): (Map[List[String], List[String]], List[List[String]]) = {
 
-  // return a list of seeds to paragraphs
-  private def getWordsStartingParagraphs(paragraphs: List[String]): List[String] = ???
+    val paragraphs = inputText.split("\n")
+    val transitionsList: Array[List[(List[String], String)]] = for (paragraph <- paragraphs) yield padInput(paragraph, windowSize).split(" ")
+      .sliding(windowSize + 1)
+      .map(elem => elem.take(windowSize).toList -> elem.last).toList
 
-  // returns transitions from one word to the next group of words (determined by window size), alongside stats about avg sentence length
-  private def parseSentences(input: List[String], windowSize: Int): (Map[String, List[String]], Double) = {
-    // for each paragraph
-    // padInput(input, windowSize)
+    val stateTransitions: Map[List[String], List[String]] = transitionsList
+      .flatten.groupBy(_._1).map { case (k,v) => (k,v.toList.map(_._2)) }
 
-    // FIXME: needs to retain the last word in a sentence
-    //    input.split(" ").sliding(windowSize)
-    //      .map(elem => elem.head -> elem.tail).toList
-    //      .groupMap(_._1)(_._2)
-    //      .view.mapValues(elem => elem.map(_.mkString(" "))).toMap
+    val transitionsScrubbedOfPadding = stateTransitions.map {
+      case (keys, values) => (keys.filter(! _.contains("/")), values.filter(! _.contains("/")))
+    }.filter(_._1.nonEmpty)
 
-    ???
+    val startStates: List[List[String]] = transitionsScrubbedOfPadding
+      .view.keys.toList
+      .filter(elem => elem.head.nonEmpty  && elem.head.toCharArray.head.isUpper && elem.length.equals(windowSize))
+
+    (transitionsScrubbedOfPadding, startStates)
+  }
+
+  private[markovchain] def getMaxVerseLength(paragraphs: List[String]): Int = {
+    val lengths = for (paragraph <- paragraphs) yield paragraph.split(" ").length
+    lengths.max
   }
 
   // hack  to make sure the first and last word are being included
-  private def padInput(input: String, windowSize: Int): String = ???
+  private[markovchain] def padInput(input: String, windowSize: Int): String = {
+    val padding: String = (1 to windowSize).map(e => "/ ").mkString
+    padding + input + " " + padding
+  }
+
+  // Unused in this chain, source text doesn't have punctuation
+  private[markovchain] def endsSentence(word: String): Boolean = {
+    val punctuation = List(".", "?", "!", "...")
+    val l = for { p <- punctuation } yield word.endsWith(p)
+    l.exists(identity)
+  }
 }
